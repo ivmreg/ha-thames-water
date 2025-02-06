@@ -1,7 +1,9 @@
 """Config flow for Thames Water integration."""
 
-from homeassistant import config_entries
+import aiohttp
 import voluptuous as vol
+
+from homeassistant import config_entries
 
 from .const import DOMAIN
 
@@ -15,9 +17,13 @@ class ThamesWaterConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle the initial step."""
         errors = {}
         if user_input is not None:
-            # Here you would normally validate the input
-            # For now, we'll assume they are valid
-            return self.async_create_entry(title="Thames Water", data=user_input)
+            # Validate the Selenium URL
+            selenium_url = user_input.get("selenium_url")
+            if not await self._test_selenium_url(selenium_url):
+                errors["selenium_url"] = "Cannot connect to Selenium URL"
+
+            if not errors:
+                return self.async_create_entry(title="Thames Water", data=user_input)
 
         data_schema = vol.Schema(
             {
@@ -37,3 +43,14 @@ class ThamesWaterConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user", data_schema=data_schema, errors=errors
         )
+
+    async def _test_selenium_url(self, selenium_url):
+        """Test if the Selenium URL is accessible."""
+        try:
+            async with (
+                aiohttp.ClientSession() as session,
+                session.get(selenium_url) as response,
+            ):
+                return response.status == 200
+        except (aiohttp.ClientError, TimeoutError):
+            return False

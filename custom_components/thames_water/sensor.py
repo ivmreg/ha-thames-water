@@ -32,7 +32,7 @@ from homeassistant.util import dt as dt_util
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
-SCAN_INTERVAL = timedelta(hours=24)
+SCAN_INTERVAL = timedelta(hours=1)
 
 
 async def async_setup_entry(
@@ -63,6 +63,13 @@ async def async_setup_entry(
         update_before_add=True,
     )
     return True
+
+
+async def should_update() -> bool:
+    """Only update at 23:XX."""
+    if datetime.now().hour == 23:
+        return True
+    return False
 
 
 class ThamesWaterUsageSensor(PollUpdateMixin, HistoricalSensor, SensorEntity):
@@ -118,10 +125,14 @@ class ThamesWaterUsageSensor(PollUpdateMixin, HistoricalSensor, SensorEntity):
         try:
             # Determine the date range
             end_date = datetime.now() - timedelta(days=3)
-            if not self.initialised:
-                start_date = end_date - timedelta(days=30)
-            else:
-                start_date = end_date - timedelta(days=3)
+            # if not self.initialised:
+            #     start_date = end_date - timedelta(days=30)
+            # else:
+            start_date = end_date - timedelta(days=3)
+
+            # Only update if the current time is 23:XX or the sensor has not been initialised
+            if self.initialised and not await should_update():
+                return
 
             # Fetch data for each day in the date range
             current_date = start_date
