@@ -169,6 +169,7 @@ class ThamesWaterUsageSensor(PollUpdateMixin, HistoricalSensor, SensorEntity):
                 current_date += timedelta(days=1)
 
             self.initialised = True
+            self.cookies_dict = None
             self._attr_historical_states = hist_states
 
         except Exception as e:
