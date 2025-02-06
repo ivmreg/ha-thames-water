@@ -45,6 +45,15 @@ async def async_setup_entry(
     account_number = entry.data["account_number"]
     meter_id = entry.data["meter_id"]
 
+    # log the configuration
+    _LOGGER.info(
+        "Configured with username: %s, selenium_url: %s, account_number: %s, meter_id: %s",
+        username,
+        selenium_url,
+        account_number,
+        meter_id,
+    )
+
     async_add_entities(
         [
             ThamesWaterUsageSensor(
@@ -70,9 +79,9 @@ class ThamesWaterUsageSensor(PollUpdateMixin, HistoricalSensor, SensorEntity):
     ) -> None:
         """Initialize the sensor."""
         self._attr_has_entity_name = True
-        self._attr_name = "Thames Water Usage"
+        self._attr_name = "Water Usage"
 
-        self._attr_unique_id = f"thames_water_usage_{meter_id}"
+        self._attr_unique_id = f"water_usage_{meter_id}"
 
         self._attr_entity_registry_enabled_default = True
         self._attr_state = None
@@ -101,7 +110,7 @@ class ThamesWaterUsageSensor(PollUpdateMixin, HistoricalSensor, SensorEntity):
             identifiers={(DOMAIN, self._attr_unique_id)},
             manufacturer="Thames Water",
             model="Water Meter",
-            name="Thames Water Meter",
+            name="Water Meter",
         )
 
     async def async_update_historical(self):

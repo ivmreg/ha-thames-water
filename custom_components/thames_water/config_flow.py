@@ -21,9 +21,14 @@ class ThamesWaterConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         data_schema = vol.Schema(
             {
-                vol.Required("username"): str,
+                vol.Required(
+                    "username", description={"suggested_value": "email@email.com"}
+                ): str,
                 vol.Required("password"): str,
-                vol.Required("selenium_url"): str,
+                vol.Required(
+                    "selenium_url",
+                    description={"suggested_value": "http://localhost:4444/wd/hub"},
+                ): str,
                 vol.Required("account_number"): str,
                 vol.Required("meter_id"): str,
             }
