@@ -72,7 +72,7 @@ class ThamesWaterUsageSensor(PollUpdateMixin, HistoricalSensor, SensorEntity):
         self._attr_has_entity_name = True
         self._attr_name = "Thames Water Usage"
 
-        self._attr_unique_id = f"thames_water_usage_{username}"
+        self._attr_unique_id = f"thames_water_usage_{meter_id}"
 
         self._attr_entity_registry_enabled_default = True
         self._attr_state = None
