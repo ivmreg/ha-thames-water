@@ -26,7 +26,8 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfVolume
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.entity import DeviceInfo, Entity
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
@@ -46,6 +47,12 @@ async def async_setup_entry(
     account_number = entry.data["account_number"]
     meter_id = entry.data["meter_id"]
 
+    entity_registry = er.async_get(hass)
+    unique_id = get_unique_id(meter_id)
+    # Check if the entity already exists in the registry
+    entity_id = entity_registry.async_get_entity_id("sensor", DOMAIN, unique_id)
+    first_run = entity_id is None
+
     # log the configuration
     _LOGGER.info(
         "Configured with username: %s, selenium_url: %s, account_number: %s, meter_id: %s",
@@ -58,7 +65,13 @@ async def async_setup_entry(
     async_add_entities(
         [
             ThamesWaterUsageSensor(
-                hass, username, password, account_number, meter_id, selenium_url
+                hass,
+                first_run,
+                username,
+                password,
+                account_number,
+                meter_id,
+                selenium_url,
             )
         ],
         update_before_add=True,
@@ -66,11 +79,16 @@ async def async_setup_entry(
     return True
 
 
-async def should_update() -> bool:
+def should_update() -> bool:
     """Only update at 12:XX."""
     if datetime.now().hour == 12:
         return True
     return False
+
+
+def get_unique_id(meter_id: str) -> str:
+    """Return a unique ID for the sensor."""
+    return f"water_usage_{meter_id}"
 
 
 class ThamesWaterUsageSensor(PollUpdateMixin, HistoricalSensor, SensorEntity):
@@ -79,6 +97,7 @@ class ThamesWaterUsageSensor(PollUpdateMixin, HistoricalSensor, SensorEntity):
     def __init__(
         self,
         hass: HomeAssistant,
+        first_run: bool,
         username: str,
         password: str,
         account_number: str,
@@ -89,7 +108,7 @@ class ThamesWaterUsageSensor(PollUpdateMixin, HistoricalSensor, SensorEntity):
         self._attr_has_entity_name = True
         self._attr_name = "Water Usage"
 
-        self._attr_unique_id = f"water_usage_{meter_id}"
+        self._attr_unique_id = get_unique_id(meter_id)
 
         self._attr_entity_registry_enabled_default = True
         self._attr_state = None
@@ -107,6 +126,8 @@ class ThamesWaterUsageSensor(PollUpdateMixin, HistoricalSensor, SensorEntity):
         self.selenium_url = selenium_url
         self.initialised = False
         self.cookies_dict = None
+
+        self.first_run = first_run
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
@@ -126,12 +147,12 @@ class ThamesWaterUsageSensor(PollUpdateMixin, HistoricalSensor, SensorEntity):
         try:
             # Determine the date range
             end_date = datetime.now() - timedelta(days=3)
-            # if not self.initialised:
-            #     start_date = end_date - timedelta(days=30)
-            # else:
-            start_date = end_date - timedelta(days=7)  # Fetch last 7 available days
+            if self.first_run:
+                start_date = end_date - timedelta(days=30)
+            else:
+                start_date = end_date - timedelta(days=3)  # Fetch last 3 available days
 
-            if self.initialised and not await should_update():
+            if self.initialised and not should_update():
                 return
 
             # Fetch data for each day in the date range
@@ -168,11 +189,13 @@ class ThamesWaterUsageSensor(PollUpdateMixin, HistoricalSensor, SensorEntity):
 
                 current_date += timedelta(days=1)
 
+            _LOGGER.info("Fetched %d historical states", len(hist_states))
+
             self.initialised = True
             self._attr_historical_states = hist_states
 
         except Exception as e:
-            self.cookies_dict = None
+            self.cookies_dict = None  # Reset cookies on error. Somehow handle this better and check when they expire.
             _LOGGER.error("Error during Selenium operation: %s", e)
 
     @property
@@ -305,7 +328,7 @@ class ThamesWaterUsageSensor(PollUpdateMixin, HistoricalSensor, SensorEntity):
                     cookie["name"]: cookie["value"] for cookie in cookies
                 }
 
-            _LOGGER.info("Fetching data for %s-%s-%s", year, month, day)
+            _LOGGER.info("Fetching data for %s/%s/%s", day, month, year)
 
             # Make a GET request with cookies and referer
             url = "https://myaccount.thameswater.co.uk/ajax/waterMeter/getSmartWaterMeterConsumptions"
@@ -347,7 +370,7 @@ class ThamesWaterUsageSensor(PollUpdateMixin, HistoricalSensor, SensorEntity):
 
             # Decode the decompressed data
             response_text = decompressed_data.decode("utf-8")
-            _LOGGER.info("Got the API response data")
+            _LOGGER.info("Got the API response data for %s/%s/%s", day, month, year)
 
             # Parse the JSON response
             data = json.loads(response_text)

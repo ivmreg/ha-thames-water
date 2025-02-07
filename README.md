@@ -15,7 +15,7 @@ The integration logs into the thames water website using your credentials to get
 
 With these cookies it then calls the https://myaccount.thameswater.co.uk/ajax/waterMeter/getSmartWaterMeterConsumptions API to retrieve the usage.
 
-The integration was created recently so it may contain bugs.
+The integration was created recently so it may contain bugs. Proceed with caution!
 
 ## Installation
 
