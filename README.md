@@ -11,7 +11,7 @@ This Home Assistant integration retrieves water consumption data from Thames Wat
 You probably need a Thames Water Smart meter.
 The water consumption data provided by this integration is delayed by approximately 3 days. This is a characteristic of the Thames Water data system and cannot be altered in this integration.
 
-The integration logs into the thames water website usign your credentials to retieve the browser cookies.
+The integration logs into the thames water website using your credentials to get the browser cookies.
 
 With these cookies it then calls the https://myaccount.thameswater.co.uk/ajax/waterMeter/getSmartWaterMeterConsumptions API to retrieve the usage.
 
