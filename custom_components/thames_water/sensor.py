@@ -33,6 +33,7 @@ from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(hours=1)
+SELENIUM_TIMEOUT = 60
 
 
 async def async_setup_entry(
@@ -66,8 +67,8 @@ async def async_setup_entry(
 
 
 async def should_update() -> bool:
-    """Only update at 23:XX."""
-    if datetime.now().hour == 23:
+    """Only update at 12:XX."""
+    if datetime.now().hour == 12:
         return True
     return False
 
@@ -128,9 +129,8 @@ class ThamesWaterUsageSensor(PollUpdateMixin, HistoricalSensor, SensorEntity):
             # if not self.initialised:
             #     start_date = end_date - timedelta(days=30)
             # else:
-            start_date = end_date - timedelta(days=3)
+            start_date = end_date - timedelta(days=7)  # Fetch last 7 available days
 
-            # Only update if the current time is 23:XX or the sensor has not been initialised
             if self.initialised and not await should_update():
                 return
 
@@ -169,10 +169,10 @@ class ThamesWaterUsageSensor(PollUpdateMixin, HistoricalSensor, SensorEntity):
                 current_date += timedelta(days=1)
 
             self.initialised = True
-            self.cookies_dict = None
             self._attr_historical_states = hist_states
 
         except Exception as e:
+            self.cookies_dict = None
             _LOGGER.error("Error during Selenium operation: %s", e)
 
     @property
@@ -248,8 +248,18 @@ class ThamesWaterUsageSensor(PollUpdateMixin, HistoricalSensor, SensorEntity):
                     command_executor=self.selenium_url, options=chrome_options
                 )
 
+                _LOGGER.info("Navigating to login page")
+
                 # Navigate to the login page
                 driver.get("https://www.thameswater.co.uk/login")
+
+                _LOGGER.info("Waiting to find the email field")
+
+                WebDriverWait(driver, SELENIUM_TIMEOUT).until(
+                    EC.presence_of_element_located((By.ID, "email"))
+                )
+
+                _LOGGER.info("Entering Credentials")
 
                 # Find and fill the email and password fields
                 email_element = driver.find_element(By.ID, "email")
@@ -262,19 +272,25 @@ class ThamesWaterUsageSensor(PollUpdateMixin, HistoricalSensor, SensorEntity):
                 # Submit the form
                 submit_element.click()
 
+                _LOGGER.info("Waiting for login to complete")
+
                 # Wait for specific text to appear on the page
-                WebDriverWait(driver, 30).until(
+                WebDriverWait(driver, SELENIUM_TIMEOUT).until(
                     EC.text_to_be_present_in_element(
                         (By.TAG_NAME, "body"), account_number
                     )
                 )
 
+                _LOGGER.info("Navigating to usage page")
+
                 driver.get(
                     f"https://myaccount.thameswater.co.uk/mydashboard/my-meters-usage?contractAccountNumber={account_number}"
                 )
 
+                _LOGGER.info("Waiting for the usage page to load")
+
                 # Wait for specific text to appear on the page
-                WebDriverWait(driver, 30).until(
+                WebDriverWait(driver, SELENIUM_TIMEOUT).until(
                     EC.text_to_be_present_in_element(
                         (By.TAG_NAME, "body"), account_number
                     )
@@ -282,12 +298,14 @@ class ThamesWaterUsageSensor(PollUpdateMixin, HistoricalSensor, SensorEntity):
 
                 # Retrieve cookies after successful login
                 cookies = driver.get_cookies()
-                _LOGGER.info("Cookies after login: %s", cookies)
+                _LOGGER.info("Got Cookies!")
 
                 # Prepare cookies for the requests library
                 self.cookies_dict = {
                     cookie["name"]: cookie["value"] for cookie in cookies
                 }
+
+            _LOGGER.info("Fetching data for %s-%s-%s", year, month, day)
 
             # Make a GET request with cookies and referer
             url = "https://myaccount.thameswater.co.uk/ajax/waterMeter/getSmartWaterMeterConsumptions"
@@ -315,7 +333,6 @@ class ThamesWaterUsageSensor(PollUpdateMixin, HistoricalSensor, SensorEntity):
             response = requests.get(
                 url, params=params, cookies=self.cookies_dict, headers=headers
             )
-            _LOGGER.info("Response headers: %s", response.headers)
 
             # Check if the response is Brotli compressed
             decompressed_data = ""
@@ -330,7 +347,7 @@ class ThamesWaterUsageSensor(PollUpdateMixin, HistoricalSensor, SensorEntity):
 
             # Decode the decompressed data
             response_text = decompressed_data.decode("utf-8")
-            _LOGGER.info("Decompressed response: %s", response_text)
+            _LOGGER.info("Got the API response data")
 
             # Parse the JSON response
             data = json.loads(response_text)
