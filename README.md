@@ -19,16 +19,13 @@ The integration was created recently so it may contain bugs.
 
 ## Installation
 
-### Automated installation through HACS
+### Installation through HACS
 
-You can install this component through [HACS](https://hacs.xyz/) to easily receive updates. Once HACS is installed, click this link:
-
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=ale770&repository=ha-thames-water)
-
-<details>
-  <summary>Manually add to HACS</summary>
-  Visit the HACS Integrations pane and go to <i>Explore and download repositories</i>. Search for <code>Hildebrand Glow (DCC)</code>, and then hit <i>Download</i>. You'll then be able to install it through the <i>Integrations</i> pane.
-</details>
+1. Install the custom component using the Home Assistant Community Store (HACS) by adding the Custom Repository:
+https://github.com/ale770/ha-thames-water
+2. In the HACS panel, select Thames Water from the repository list and select the DOWNLOAD button.
+3. Restart HA
+4. Go to Settings > Devices & Services > Add Integration and select Thames Water.
 
 ### Manual installation
 
