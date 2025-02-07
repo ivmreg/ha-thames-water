@@ -49,13 +49,16 @@ Then, add the integration:
 
 ## Sensors
 
-Once you've authenticated, the integration will automatically set up the water usage sensor (L)
+The integration will automatically set up the water usage sensor (L).
 
-It updates every day at 12pm.
+It updates every day between 12-13pm.
 
 ## Energy Management
 
-The sensors created integrate directly into Home Assistant's [Home Energy Management](https://www.home-assistant.io/docs/energy/).
+The sensor created integrates directly into Home Assistant's [Home Energy Management](https://www.home-assistant.io/docs/energy/).
 
 [![Open your Home Assistant instance and show your Energy configuration panel.](https://my.home-assistant.io/badges/config_energy.svg)](https://my.home-assistant.io/redirect/config_energy/)
+
+![Dashboard](./dashboard.png)
+
 
