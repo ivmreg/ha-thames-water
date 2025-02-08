@@ -191,11 +191,11 @@ class ThamesWaterUsageSensor(PollUpdateMixin, HistoricalSensor, SensorEntity):
 
             _LOGGER.info("Fetched %d historical states", len(hist_states))
 
+            self.cookies_dict = None
             self.initialised = True
             self._attr_historical_states = hist_states
 
         except Exception as e:
-            self.cookies_dict = None  # Reset cookies on error. Somehow handle this better and check when they expire.
             _LOGGER.error("Error during Selenium operation: %s", e)
 
     @property
