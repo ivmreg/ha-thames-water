@@ -196,6 +196,7 @@ class ThamesWaterUsageSensor(PollUpdateMixin, HistoricalSensor, SensorEntity):
             self._attr_historical_states = hist_states
 
         except Exception as e:
+            self.cookies_dict = None
             _LOGGER.error("Error during Selenium operation: %s", e)
 
     @property
