@@ -6,14 +6,15 @@
   "config_flow": true,
   "requirements": [
     "selenium",
-    "brotli",
-    "homeassistant-historical-sensor==2.0.0rc4"
+    "brotli"
   ],
   "dependencies": [
     "recorder"
   ],
   "iot_class": "cloud_polling",
-  "codeowners": ["@ale770"],
+  "codeowners": [
+    "@ale770"
+  ],
   "documentation": "hhttps://github.com/ale770/ha-thames-water",
   "issue_tracker": "hhttps://github.com/ale770/ha-thames-water/issues"
 }
