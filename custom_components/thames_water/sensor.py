@@ -140,7 +140,7 @@ class ThamesWaterSensor(SensorEntity):
         return UnitOfVolume.LITERS
 
     @callback
-    async def async_update_callback(self) -> None:
+    async def async_update_callback(self, ts) -> None:
         """Callback triggered by time change to update the sensor and inject statistics."""
         await self.async_update()
         self.async_write_ha_state()
