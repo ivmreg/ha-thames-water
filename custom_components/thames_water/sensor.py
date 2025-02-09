@@ -28,7 +28,6 @@ from homeassistant.util import dt as dt_util
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
-SCAN_INTERVAL = timedelta(hours=1)
 SELENIUM_TIMEOUT = 60
 
 
@@ -118,6 +117,7 @@ class ThamesWaterSensor(SensorEntity):
 
         self._first_run = first_run
         self._unique_id = unique_id
+        self._attr_should_poll = False
 
     @property
     def unique_id(self) -> str:
@@ -140,7 +140,7 @@ class ThamesWaterSensor(SensorEntity):
         return UnitOfVolume.LITERS
 
     @callback
-    async def async_update_callback(self, now: datetime) -> None:
+    async def async_update_callback(self) -> None:
         """Callback triggered by time change to update the sensor and inject statistics."""
         await self.async_update()
         self.async_write_ha_state()
