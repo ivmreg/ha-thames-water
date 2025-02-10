@@ -6,16 +6,15 @@
 
 # Home Assistant Integration for Thames Water Consumption Data
 
-This Home Assistant integration retrieves water consumption data from Thames Water using their API. It allows you to monitor your water usage without needing additional devices, directly from your Home Assistant setup.
+This Home Assistant integration retrieves water consumption data from Thames Water using their API. It allows you to monitor your water usage directly from your Home Assistant setup without needing additional devices.
 
-You probably need a Thames Water Smart meter.
-The water consumption data provided by this integration is delayed by approximately 3 days. This is a characteristic of the Thames Water data system and cannot be altered in this integration.
+You need a Thames Water Smart Meter. The water consumption data provided by this integration is delayed by approximately three days or more. This delay is a characteristic of the Thames Water data system and cannot be altered in this integration.
 
-The integration logs into the thames water website using your credentials to get the browser cookies.
+The integration uses Selenium to log in to the Thames Water website, as it needs to obtain the browser cookies to make the API call. I use the Selenium Addon in Home Assistant.
 
-With these cookies it then calls the https://myaccount.thameswater.co.uk/ajax/waterMeter/getSmartWaterMeterConsumptions API to retrieve the usage.
+With these cookies, it then calls the `getSmartWaterMeterConsumptions` API to retrieve the usage data.
 
-The integration was created recently so it may contain bugs. Proceed with caution!
+The integration was created recently, so it may contain bugs. Proceed with caution!
 
 ## Installation
 
@@ -51,7 +50,7 @@ Then, add the integration:
 
 The integration will automatically set up the water usage sensor (L).
 
-It updates every day between 12-13pm.
+It updates every day between 12pm.
 
 ## Energy Management
 

@@ -36,6 +36,7 @@ from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 SELENIUM_TIMEOUT = 60
+UPDATE_HOURS = [12, 0]
 
 
 async def async_setup_entry(
