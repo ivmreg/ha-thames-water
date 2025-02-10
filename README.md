@@ -46,16 +46,9 @@ Then, add the integration:
   Visit the <i>Integrations</i> section in Home Assistant and click the <i>Add</i> button in the bottom right corner. Search for <code>Thames Water</code> and input your credentials. <b>You may need to clear your browser cache before the integration appears in the list.</b>
 </details>
 
-## Sensors
-
-The integration will automatically set up the water usage sensor (L).
-
-It updates every day at 12pm.
-The first time it runs it will try to get the last 30 days of data.
-
 ## Energy Management
 
-The sensor created integrates directly into Home Assistant's [Home Energy Management](https://www.home-assistant.io/docs/energy/).
+The water statistics can be integrated into HA [Home Energy Management](https://www.home-assistant.io/docs/energy/) using **thames_water:thameswater_consumption**.
 
 [![Open your Home Assistant instance and show your Energy configuration panel.](https://my.home-assistant.io/badges/config_energy.svg)](https://my.home-assistant.io/redirect/config_energy/)
 
