@@ -50,7 +50,7 @@ Then, add the integration:
 
 The integration will automatically set up the water usage sensor (L).
 
-It updates every day between 12pm.
+It updates every day at 12pm.
 The first time it runs it will try to get the last 30 days of data.
 
 ## Energy Management
