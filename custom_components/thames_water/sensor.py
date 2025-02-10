@@ -26,6 +26,7 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
 )
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, UnitOfVolume
 from homeassistant.core import HomeAssistant, callback
@@ -164,6 +165,17 @@ class ThamesWaterSensor(SensorEntity):
     def unit_of_measurement(self) -> str:
         """Return the unit of measurement (Liters)."""
         return UnitOfVolume.LITERS
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information for the consumption sensor."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, "thames_water")},
+            manufacturer="Thames Water",
+            model="Thames Water",
+            name="Thames Water Meter",
+        )
+
 
     @callback
     async def async_update_callback(self, ts) -> None:

@@ -50,6 +50,8 @@ Then, add the integration:
 
 The water statistics can be integrated into HA [Home Energy Management](https://www.home-assistant.io/docs/energy/) using **thames_water:thameswater_consumption**.
 
+It will attempt to fetch the latest data at 00:00 and 12:00 every day.
+
 [![Open your Home Assistant instance and show your Energy configuration panel.](https://my.home-assistant.io/badges/config_energy.svg)](https://my.home-assistant.io/redirect/config_energy/)
 
 ![Dashboard](./dashboard.png)
