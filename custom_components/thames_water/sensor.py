@@ -224,8 +224,6 @@ class ThamesWaterSensor(SensorEntity):
                 year,
                 month,
                 day,
-                self._account_number,
-                self._meter_id,
             )
 
             # Process the returned data; expect a "Lines" list.
@@ -280,7 +278,7 @@ class ThamesWaterSensor(SensorEntity):
         async_add_external_statistics(self._hass, metadata, stats)
 
     def _fetch_data_with_selenium(
-        self, year: int, month: int, day: int, account_number: str, meter_id: str
+        self, year: int, month: int, day: int
     ) -> dict:
         """Fetch data using Selenium in a blocking manner."""
         driver = None
@@ -313,19 +311,19 @@ class ThamesWaterSensor(SensorEntity):
                 _LOGGER.debug("Waiting for login to complete")
                 WebDriverWait(driver, SELENIUM_TIMEOUT).until(
                     EC.text_to_be_present_in_element(
-                        (By.TAG_NAME, "body"), account_number
+                        (By.TAG_NAME, "body"), self._account_number
                     )
                 )
 
                 _LOGGER.debug("Navigating to usage page")
                 driver.get(
-                    f"https://myaccount.thameswater.co.uk/mydashboard/my-meters-usage?contractAccountNumber={account_number}"
+                    f"https://myaccount.thameswater.co.uk/mydashboard/my-meters-usage?contractAccountNumber={self._account_number}"
                 )
 
                 _LOGGER.debug("Waiting for the usage page to load")
                 WebDriverWait(driver, SELENIUM_TIMEOUT).until(
                     EC.text_to_be_present_in_element(
-                        (By.TAG_NAME, "body"), account_number
+                        (By.TAG_NAME, "body"), self._account_number
                     )
                 )
 
@@ -338,7 +336,7 @@ class ThamesWaterSensor(SensorEntity):
             _LOGGER.debug("Fetching data for %s/%s/%s", day, month, year)
             url = "https://myaccount.thameswater.co.uk/ajax/waterMeter/getSmartWaterMeterConsumptions"
             params = {
-                "meter": meter_id,
+                "meter": self._meter_id,
                 "startDate": day,
                 "startMonth": month,
                 "startYear": year,
