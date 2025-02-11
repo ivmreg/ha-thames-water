@@ -78,7 +78,7 @@ async def async_setup_entry(
     async_track_time_change(
         hass,
         sensor.async_update_callback,
-        hour=12,
+        hour=UPDATE_HOURS,
         minute=0,
         second=0,
     )
