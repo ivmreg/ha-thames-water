@@ -248,6 +248,8 @@ class ThamesWaterSensor(SensorEntity):
             current_date = current_date + timedelta(days=1)
 
         _LOGGER.info("Fetched %d historical entries", len(readings))
+        # Clear temporary cookies.
+        self._cookies_dict = None
 
         if last_stats is not None and last_stats.get("sum") is not None:
             initial_cumulative = last_stats["sum"]
@@ -276,9 +278,6 @@ class ThamesWaterSensor(SensorEntity):
             unit_of_measurement=UnitOfVolume.LITERS,
         )
         async_add_external_statistics(self._hass, metadata, stats)
-
-        # Clear temporary cookies.
-        self._cookies_dict = None
 
     def _fetch_data_with_selenium(
         self, year: int, month: int, day: int, account_number: str, meter_id: str
