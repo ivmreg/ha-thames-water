@@ -10,6 +10,7 @@ from operator import itemgetter
 import brotli
 import requests
 from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -26,10 +27,10 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
 )
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, UnitOfVolume
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.util import dt as dt_util
 
@@ -176,7 +177,6 @@ class ThamesWaterSensor(SensorEntity):
             name="Thames Water Meter",
         )
 
-
     @callback
     async def async_update_callback(self, ts) -> None:
         """Callback triggered by time change to update the sensor and inject statistics."""
@@ -277,9 +277,7 @@ class ThamesWaterSensor(SensorEntity):
         )
         async_add_external_statistics(self._hass, metadata, stats)
 
-    def _fetch_data_with_selenium(
-        self, year: int, month: int, day: int
-    ) -> dict:
+    def _fetch_data_with_selenium(self, year: int, month: int, day: int) -> dict:
         """Fetch data using Selenium in a blocking manner."""
         driver = None
         try:
@@ -299,6 +297,18 @@ class ThamesWaterSensor(SensorEntity):
                 WebDriverWait(driver, SELENIUM_TIMEOUT).until(
                     EC.presence_of_element_located((By.ID, "email"))
                 )
+
+                # Check if the cookie banner exists and click it if found
+                try:
+                    cookie_banner = WebDriverWait(driver, 5).until(
+                        EC.element_to_be_clickable(
+                            (By.ID, "onetrust-accept-btn-handler")
+                        )
+                    )
+                    cookie_banner.click()
+                    _LOGGER.debug("Cookie banner accepted")
+                except TimeoutException:
+                    _LOGGER.debug("Cookie banner not found, skipping")
 
                 _LOGGER.debug("Entering credentials")
                 email_element = driver.find_element(By.ID, "email")
