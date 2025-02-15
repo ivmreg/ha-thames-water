@@ -22,7 +22,18 @@ class ThamesWaterConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if not await self._test_selenium_url(selenium_url):
                 errors["selenium_url"] = "Cannot connect to Selenium URL"
 
+            # Validate liter_cost
+            liter_cost_str = user_input.get("liter_cost")
+            try:
+                liter_cost_val = float(liter_cost_str)
+                if liter_cost_val < 0.00005 or liter_cost_val > 1.0:
+                    errors["liter_cost"] = "Value must be between 0.00005 and 1.0"
+            except (TypeError, ValueError):
+                errors["liter_cost"] = "Not a valid number"
+
             if not errors:
+                # Replace string values with validated floats
+                user_input["liter_cost"] = liter_cost_val
                 return self.async_create_entry(title="Thames Water", data=user_input)
 
         data_schema = vol.Schema(
@@ -37,6 +48,7 @@ class ThamesWaterConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 ): str,
                 vol.Required("account_number"): str,
                 vol.Required("meter_id"): str,
+                vol.Required("liter_cost", default="0.0030682"): str,
             }
         )
 

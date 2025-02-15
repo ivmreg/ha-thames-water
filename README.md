@@ -8,13 +8,15 @@
 
 This Home Assistant integration retrieves water consumption data from Thames Water using their API. It allows you to monitor your water usage directly from your Home Assistant setup without needing additional devices.
 
-You need a Thames Water Smart Meter. The water consumption data provided by this integration is delayed by approximately three days or more. This delay is a characteristic of the Thames Water data system and cannot be altered in this integration.
+You need a **Thames Water Smart Meter**. The water consumption data provided by this integration is delayed by approximately three days or more. This delay is a characteristic of the Thames Water data system and cannot be altered in this integration.
 
 The integration uses Selenium to log in to the Thames Water website, as it needs to obtain the browser cookies to make the API call. I use the Selenium Addon in Home Assistant.
 
 With these cookies, it then calls the `getSmartWaterMeterConsumptions` API to retrieve the usage data.
 
 The integration was created recently, so it may contain bugs. Proceed with caution!
+
+On the first run it may take more than a minute to become ready.
 
 ## Installation
 
@@ -43,12 +45,16 @@ Then, add the integration:
 
 <details>
   <summary>Manually add the Integration</summary>
-  Visit the <i>Integrations</i> section in Home Assistant and click the <i>Add</i> button in the bottom right corner. Search for <code>Thames Water</code> and input your credentials. <b>You may need to clear your browser cache before the integration appears in the list.</b>
+  Visit the <i>Integrations</i> section in Home Assistant and click the <i>Add</i> button in the bottom right corner. Search for <code>Thames Water</code> and input your details. <b>You may need to clear your browser cache before the integration appears in the list.</b>
 </details>
 
 ## Energy Management
 
 The water statistics can be integrated into HA [Home Energy Management](https://www.home-assistant.io/docs/energy/) using **thames_water:thameswater_consumption**.
+
+**thames_water:thameswater_cost** can be used to track costs.
+The cost per litre can be configured in the device configuration page.
+Changing this value will only affect new readings. If you want to update past readings you'll need to remove the integration, delete the statistics and add the integration again.
 
 It will attempt to fetch the latest data at 00:00 and 12:00 every day.
 

@@ -7,6 +7,7 @@ import json
 import logging
 from operator import itemgetter
 
+import random
 import brotli
 import requests
 from selenium import webdriver
@@ -45,42 +46,20 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities
 ) -> bool:
     """Set up the Thames Water sensor platform."""
-    username = entry.data["username"]
-    password = entry.data["password"]
-    selenium_url = entry.data["selenium_url"]
-    account_number = entry.data["account_number"]
-    meter_id = entry.data["meter_id"]
-
-    unique_id = get_unique_id(meter_id)
-
-    _LOGGER.debug(
-        "Configured with username: %s, selenium_url: %s, account_number: %s, meter_id: %s",
-        username,
-        selenium_url,
-        account_number,
-        meter_id,
-    )
-
-    name = entry.data.get(CONF_NAME, "Thames Water Sensor")
-
     sensor = ThamesWaterSensor(
         hass,
-        name,
-        username,
-        password,
-        account_number,
-        meter_id,
-        selenium_url,
-        unique_id,
+        entry,
     )
+
     async_add_entities([sensor], update_before_add=True)
 
-    # Schedule the sensor to update every day at 12:00 PM.
+    # Schedule the sensor to update every day at UPDATE_HOURS.
+    rand_minute = random.randint(0, 10)
     async_track_time_change(
         hass,
         sensor.async_update_callback,
         hour=UPDATE_HOURS,
-        minute=0,
+        minute=rand_minute,
         second=0,
     )
     return True
@@ -114,6 +93,30 @@ def _generate_statistics_from_readings(
     return stats
 
 
+def _generate_cost_statistics_from_readings(
+    readings: list[tuple[datetime, float]],
+    liter_cost: float,
+    cumulative_start: float = 0.0,
+) -> list[StatisticData]:
+    """Convert a list of (datetime, reading) entries into StatisticData entries."""
+    sorted_readings = sorted(readings, key=lambda x: x["dt"])
+    cumulative = cumulative_start
+    stats: list[StatisticData] = []
+    for elem in sorted_readings:
+        # Normalize the start timestamp to the hour
+        hour_ts = elem["dt"].replace(minute=0, second=0, microsecond=0)
+        value = elem["state"] * liter_cost
+        cumulative += value
+        stats.append(
+            StatisticData(
+                start=dt_util.as_utc(hour_ts),
+                state=value,
+                sum=cumulative,
+            )
+        )
+    return stats
+
+
 class ThamesWaterSensor(SensorEntity):
     """Thames Water Sensor class."""
 
@@ -124,27 +127,23 @@ class ThamesWaterSensor(SensorEntity):
     def __init__(
         self,
         hass: HomeAssistant,
-        name: str,
-        username: str,
-        password: str,
-        account_number: str,
-        meter_id: str,
-        selenium_url: str,
-        unique_id: str,
+        config_entry: ConfigEntry,
     ) -> None:
         """Initialize the sensor."""
         self._hass = hass
-        self._name = name
+        self._config_entry = config_entry
         self._state: float | None = None
 
-        self._username = username
-        self._password = password
-        self._account_number = account_number
-        self._meter_id = meter_id
-        self._selenium_url = selenium_url
+        self._name = config_entry.data.get(CONF_NAME, "Thames Water Sensor")
+
+        self._username = config_entry.data["username"]
+        self._password = config_entry.data["password"]
+        self._account_number = config_entry.data["account_number"]
+        self._meter_id = config_entry.data["meter_id"]
+        self._selenium_url = config_entry.data["selenium_url"]
         self._cookies_dict = None
 
-        self._unique_id = unique_id
+        self._unique_id = get_unique_id(self._meter_id)
         self._attr_should_poll = False
 
     @property
@@ -185,19 +184,29 @@ class ThamesWaterSensor(SensorEntity):
 
     async def async_update(self):
         """Fetch data, build hourly statistics, and inject external statistics."""
-        stat_id = f"{DOMAIN}:thameswater_consumption"
+        consumption_stat_id = f"{DOMAIN}:thameswater_consumption"
+        cost_stat_id = f"{DOMAIN}:thameswater_cost"
 
         try:
-            # Look up the most recent statistics data. This lookup runs in the executor.
+            # Look up the most recent statistics data.
             last_stats = await get_instance(self.hass).async_add_executor_job(
-                get_last_statistics, self.hass, 1, stat_id, True, {"sum"}
+                get_last_statistics, self.hass, 1, consumption_stat_id, True, {"sum"}
+            )
+            last_cost_stats = await get_instance(self.hass).async_add_executor_job(
+                get_last_statistics, self.hass, 1, cost_stat_id, True, {"sum"}
             )
             # If a previous value exists, use its "sum" as the starting cumulative.
-            if len(last_stats.get(stat_id, [])) > 0:
-                last_stats = last_stats[stat_id]
+            if len(last_stats.get(consumption_stat_id, [])) > 0:
+                last_stats = last_stats[consumption_stat_id]
                 last_stats = sorted(last_stats, key=itemgetter("start"), reverse=False)[
                     0
                 ]
+            # If a previous value exists, use its "sum" as the starting cumulative.
+            if len(last_cost_stats.get(cost_stat_id, [])) > 0:
+                last_cost_stats = last_cost_stats[cost_stat_id]
+                last_cost_stats = sorted(
+                    last_cost_stats, key=itemgetter("start"), reverse=False
+                )[0]
         except AttributeError:
             last_stats = None
 
@@ -212,7 +221,7 @@ class ThamesWaterSensor(SensorEntity):
         end_date = end_dt.date()
         # readings holds all hourly data for the entire period.
         readings: list[dict] = []
-
+        latest_usage = 0
         while current_date <= end_date:
             year = current_date.year
             month = current_date.month
@@ -228,9 +237,11 @@ class ThamesWaterSensor(SensorEntity):
 
             # Process the returned data; expect a "Lines" list.
             lines = data.get("Lines", [])
+            latest_usage = 0
             for line in lines:
                 time_str = line.get("Label")
                 usage = line.get("Usage")
+                latest_usage += usage
                 try:
                     hour, minute = map(int, time_str.split(":"))
                 except Exception as err:
@@ -249,6 +260,17 @@ class ThamesWaterSensor(SensorEntity):
         # Clear temporary cookies.
         self._cookies_dict = None
 
+        liter_cost = self._config_entry.options.get(
+            "liter_cost", self._config_entry.data.get("liter_cost")
+        )
+
+        _LOGGER.debug(
+            "Using Liter Cost: %s",
+            liter_cost,
+        )
+        if liter_cost is None:
+            liter_cost = 0
+
         if last_stats is not None and last_stats.get("sum") is not None:
             initial_cumulative = last_stats["sum"]
             # Discard all readings before last_stats["start"].
@@ -257,25 +279,44 @@ class ThamesWaterSensor(SensorEntity):
         else:
             initial_cumulative = 0.0
 
+        if last_cost_stats is not None and last_cost_stats.get("sum") is not None:
+            initial_cost_cumulative = last_cost_stats["sum"]
+        else:
+            initial_cost_cumulative = 0.0
+
         if len(readings) == 0:
+            _LOGGER.warning("No new readings available")
             return
 
         # Generate new StatisticData entries using the previous cumulative sum.
         stats = _generate_statistics_from_readings(
             readings, cumulative_start=initial_cumulative
         )
-        self._state = round(readings[-1]["state"], 2)
+        cost_stats = _generate_cost_statistics_from_readings(
+            readings, liter_cost, cumulative_start=initial_cost_cumulative
+        )
+        if latest_usage > 0:
+            self._state = latest_usage
 
         # Build per-hour statistics from each reading.
-        metadata = StatisticMetaData(
+        metadata_consumption = StatisticMetaData(
             has_mean=False,
             has_sum=True,
             name="Thames Water Consumption",
             source=DOMAIN,
-            statistic_id=stat_id,
+            statistic_id=consumption_stat_id,
             unit_of_measurement=UnitOfVolume.LITERS,
         )
-        async_add_external_statistics(self._hass, metadata, stats)
+        metadata_cost = StatisticMetaData(
+            has_mean=False,
+            has_sum=True,
+            name="Thames Water Cost",
+            source=DOMAIN,
+            statistic_id=cost_stat_id,
+            unit_of_measurement="GBP",
+        )
+        async_add_external_statistics(self._hass, metadata_consumption, stats)
+        async_add_external_statistics(self._hass, metadata_cost, cost_stats)
 
     def _fetch_data_with_selenium(self, year: int, month: int, day: int) -> dict:
         """Fetch data using Selenium in a blocking manner."""
