@@ -6,8 +6,8 @@ from datetime import datetime, timedelta
 import json
 import logging
 from operator import itemgetter
-
 import random
+
 import brotli
 import requests
 from selenium import webdriver
@@ -31,11 +31,11 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, UnitOfVolume
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
+from .entity import ThamesWaterEntity
 
 _LOGGER = logging.getLogger(__name__)
 SELENIUM_TIMEOUT = 60
@@ -65,14 +65,10 @@ async def async_setup_entry(
     return True
 
 
-def get_unique_id(meter_id: str) -> str:
-    """Return a unique ID for the sensor."""
-    return f"water_usage_{meter_id}"
-
-
 def _generate_statistics_from_readings(
     readings: list[tuple[datetime, float]],
     cumulative_start: float = 0.0,
+    liter_cost: float = None,
 ) -> list[StatisticData]:
     """Convert a list of (datetime, reading) entries into StatisticData entries."""
     sorted_readings = sorted(readings, key=lambda x: x["dt"])
@@ -81,7 +77,10 @@ def _generate_statistics_from_readings(
     for elem in sorted_readings:
         # Normalize the start timestamp to the hour
         hour_ts = elem["dt"].replace(minute=0, second=0, microsecond=0)
-        value = elem["state"]
+        if liter_cost is None:
+            value = elem["state"]
+        else:
+            value = elem["state"] * liter_cost
         cumulative += value
         stats.append(
             StatisticData(
@@ -93,36 +92,13 @@ def _generate_statistics_from_readings(
     return stats
 
 
-def _generate_cost_statistics_from_readings(
-    readings: list[tuple[datetime, float]],
-    liter_cost: float,
-    cumulative_start: float = 0.0,
-) -> list[StatisticData]:
-    """Convert a list of (datetime, reading) entries into StatisticData entries."""
-    sorted_readings = sorted(readings, key=lambda x: x["dt"])
-    cumulative = cumulative_start
-    stats: list[StatisticData] = []
-    for elem in sorted_readings:
-        # Normalize the start timestamp to the hour
-        hour_ts = elem["dt"].replace(minute=0, second=0, microsecond=0)
-        value = elem["state"] * liter_cost
-        cumulative += value
-        stats.append(
-            StatisticData(
-                start=dt_util.as_utc(hour_ts),
-                state=value,
-                sum=cumulative,
-            )
-        )
-    return stats
-
-
-class ThamesWaterSensor(SensorEntity):
+class ThamesWaterSensor(ThamesWaterEntity, SensorEntity):
     """Thames Water Sensor class."""
 
     _attr_state_class = SensorStateClass.TOTAL
     _attr_device_class = SensorDeviceClass.WATER
     _attr_native_unit_of_measurement = UnitOfVolume.LITERS
+    _attr_name = "Thames Water Sensor"
 
     def __init__(
         self,
@@ -134,8 +110,6 @@ class ThamesWaterSensor(SensorEntity):
         self._config_entry = config_entry
         self._state: float | None = None
 
-        self._name = config_entry.data.get(CONF_NAME, "Thames Water Sensor")
-
         self._username = config_entry.data["username"]
         self._password = config_entry.data["password"]
         self._account_number = config_entry.data["account_number"]
@@ -143,42 +117,17 @@ class ThamesWaterSensor(SensorEntity):
         self._selenium_url = config_entry.data["selenium_url"]
         self._cookies_dict = None
 
-        self._unique_id = get_unique_id(self._meter_id)
+        self._attr_unique_id = f"water_usage_{self._meter_id}"
         self._attr_should_poll = False
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID for this sensor."""
-        return self._unique_id
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
 
     @property
     def state(self) -> float | None:
         """Return the sensor state (latest hourly consumption in Liters)."""
         return self._state
 
-    @property
-    def unit_of_measurement(self) -> str:
-        """Return the unit of measurement (Liters)."""
-        return UnitOfVolume.LITERS
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device information for the consumption sensor."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, "thames_water")},
-            manufacturer="Thames Water",
-            model="Thames Water",
-            name="Thames Water Meter",
-        )
-
     @callback
     async def async_update_callback(self, ts) -> None:
-        """Callback triggered by time change to update the sensor and inject statistics."""
+        """Update the sensor state."""
         await self.async_update()
         self.async_write_ha_state()
 
@@ -292,8 +241,8 @@ class ThamesWaterSensor(SensorEntity):
         stats = _generate_statistics_from_readings(
             readings, cumulative_start=initial_cumulative
         )
-        cost_stats = _generate_cost_statistics_from_readings(
-            readings, liter_cost, cumulative_start=initial_cost_cumulative
+        cost_stats = _generate_statistics_from_readings(
+            readings, cumulative_start=initial_cost_cumulative, liter_cost=liter_cost
         )
         if latest_usage > 0:
             self._state = latest_usage
@@ -415,7 +364,11 @@ class ThamesWaterSensor(SensorEntity):
                 "Connection": "keep-alive",
             }
             response = requests.get(
-                url, params=params, cookies=self._cookies_dict, headers=headers
+                url,
+                params=params,
+                cookies=self._cookies_dict,
+                headers=headers,
+                timeout=30,
             )
 
             try:

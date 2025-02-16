@@ -3,10 +3,10 @@
 from homeassistant.components.number import NumberEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo, EntityCategory
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .entity import ThamesWaterEntity
 
 
 async def async_setup_entry(
@@ -15,24 +15,16 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the number entities for Thames Water."""
-    # Create minimal device_info.
-    device_info = DeviceInfo(
-        identifiers={(DOMAIN, "thames_water")},
-        manufacturer="Thames Water",
-        model="Thames Water",
-        name="Thames Water Meter",
-    )
-
     # Get values first from options, falling back to entry.data.
     liter_cost = entry.options.get("liter_cost", entry.data.get("liter_cost"))
 
     entities = [
-        ThamesWaterLiterCost(device_info, entry, initial_value=liter_cost),
+        ThamesWaterLiterCost(entry, initial_value=liter_cost),
     ]
     async_add_entities(entities)
 
 
-class ThamesWaterLiterCost(NumberEntity):
+class ThamesWaterLiterCost(ThamesWaterEntity, NumberEntity):
     """Number entity representing the water liter cost in GBP/L as a normal input box."""
 
     _attr_entity_category = EntityCategory.CONFIG
@@ -46,21 +38,14 @@ class ThamesWaterLiterCost(NumberEntity):
 
     def __init__(
         self,
-        device_info: DeviceInfo,
         config_entry: ConfigEntry,
         initial_value: float = 0.0,
     ) -> None:
         """Initialize the Thames Water Liter Cost number entity."""
-        self._device_info = device_info
         self._config_entry = config_entry
         # Save the value as a float.
         self._value = float(initial_value)
         self._attr_unique_id = f"{config_entry.entry_id}_liter_cost"
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device information for this entity."""
-        return self._device_info
 
     @property
     def native_value(self) -> float:
