@@ -151,10 +151,10 @@ class ThamesWaterSensor(ThamesWaterEntity, SensorEntity):
 
         # Data is available from at least 3 days ago.
         end_dt = datetime.now() - timedelta(days=3)
-        if not last_stats:
-            start_dt = end_dt - timedelta(days=30)
+        if last_stats is not None and last_stats.get("sum") is not None:
+            start_dt = dt_util.as_utc(datetime.fromtimestamp(last_stats.get("start")))
         else:
-            start_dt = end_dt - timedelta(days=3)
+            start_dt = end_dt - timedelta(days=30)
 
         current_date = start_dt.date()
         end_date = end_dt.date()
