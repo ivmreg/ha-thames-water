@@ -5,8 +5,7 @@
   "version": "1.0",
   "config_flow": true,
   "requirements": [
-    "selenium",
-    "brotli"
+    "thameswaterclient==0.1.3"
   ],
   "dependencies": [
     "recorder"
