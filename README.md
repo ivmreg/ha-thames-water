@@ -2,7 +2,7 @@
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg?style=for-the-badge)](https://github.com/custom-components/hacs)
 
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/ar770)
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/V7V71CVL48)
 
 # Home Assistant Integration for Thames Water Consumption Data
 
@@ -51,7 +51,7 @@ The water statistics can be integrated into HA [Home Energy Management](https://
 The cost per litre can be configured in the device configuration page.
 Changing this value will only affect new readings. If you want to update past readings you'll need to remove the integration, delete the statistics and add the integration again.
 
-It will attempt to fetch the latest data at 00:00 and 12:00 every day.
+You can set at what time it will try and fetch new data using the fetch_data parameter.
 
 [![Open your Home Assistant instance and show your Energy configuration panel.](https://my.home-assistant.io/badges/config_energy.svg)](https://my.home-assistant.io/redirect/config_energy/)
 

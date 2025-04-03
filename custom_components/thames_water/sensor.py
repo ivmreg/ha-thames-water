@@ -30,8 +30,7 @@ from .const import DOMAIN
 from .entity import ThamesWaterEntity
 
 _LOGGER = logging.getLogger(__name__)
-UPDATE_HOURS = [12, 0]
-
+UPDATE_HOURS = [15,23]
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities
@@ -44,12 +43,17 @@ async def async_setup_entry(
 
     async_add_entities([sensor], update_before_add=True)
 
+    if "fetch_hours" in entry.data and entry.data["fetch_hours"]:
+        update_hours = entry.data["fetch_hours"].split(",")
+    else:
+        update_hours = UPDATE_HOURS
+
     # Schedule the sensor to update every day at UPDATE_HOURS.
     rand_minute = random.randint(0, 10)
     async_track_time_change(
         hass,
         sensor.async_update_callback,
-        hour=UPDATE_HOURS,
+        hour=update_hours,
         minute=rand_minute,
         second=0,
     )
@@ -260,7 +264,9 @@ class ThamesWaterSensor(ThamesWaterEntity, SensorEntity):
             readings, cumulative_start=initial_cumulative
         )
         cost_stats = _generate_statistics_from_readings(
-            readings, cumulative_start=initial_cost_cumulative, liter_cost=liter_cost
+            readings,
+            cumulative_start=initial_cost_cumulative,
+            liter_cost=float(liter_cost),
         )
         if latest_usage > 0:
             self._state = latest_usage
