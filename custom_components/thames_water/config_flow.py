@@ -30,6 +30,11 @@ class ThamesWaterConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         """Handle reconfiguration of the integration."""
         errors = {}
+        existing_entry = self.hass.config_entries.async_get_entry(
+            self.context["entry_id"]
+        )
+        if existing_entry is None:
+            return self.async_abort(reason="Entry not found")
         if user_input is not None:
             errors = self._validate_input(user_input)
 
@@ -41,7 +46,7 @@ class ThamesWaterConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="reconfigure",
-            data_schema=self._get_data_schema(),
+            data_schema=self._get_data_schema(existing_entry.data),
             errors=errors,
         )
 
