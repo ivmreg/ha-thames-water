@@ -140,11 +140,11 @@ class ThamesWaterSensor(ThamesWaterEntity, SensorEntity):
                 last_cost_stats = await get_instance(self.hass).async_add_executor_job(
                     get_last_statistics, self.hass, 1, cost_stat_id, True, {"sum"}
                 )
-
+            # If a previous value exists, use its "sum" as the starting cumulative.
             if len(last_stats.get(consumption_stat_id, [])) > 0:
                 last_stats = last_stats[consumption_stat_id]
                 last_stats = sorted(last_stats, key=itemgetter("start"), reverse=False)[0]
-
+            # If a previous value exists, use its "sum" as the starting cumulative.
             if len(last_cost_stats.get(cost_stat_id, [])) > 0:
                 last_cost_stats = last_cost_stats[cost_stat_id]
                 last_cost_stats = sorted(last_cost_stats, key=itemgetter("start"), reverse=False)[0]
