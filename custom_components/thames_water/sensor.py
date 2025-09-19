@@ -7,8 +7,6 @@ import logging
 from operator import itemgetter
 import random
 
-from thameswaterclient import ThamesWater
-
 from homeassistant.components.recorder import get_instance
 from homeassistant.components.recorder.models import StatisticData, StatisticMetaData
 from homeassistant.components.recorder.statistics import (
@@ -28,6 +26,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 from .entity import ThamesWaterEntity
+from .thameswaterclient import ThamesWater
 
 _LOGGER = logging.getLogger(__name__)
 UPDATE_HOURS = [15,23]
