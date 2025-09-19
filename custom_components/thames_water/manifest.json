@@ -13,6 +13,6 @@
   "codeowners": [
     "@ale770"
   ],
-  "documentation": "hhttps://github.com/ale770/ha-thames-water",
-  "issue_tracker": "hhttps://github.com/ale770/ha-thames-water/issues"
+  "documentation": "https://github.com/ale770/ha-thames-water",
+  "issue_tracker": "https://github.com/ale770/ha-thames-water/issues"
 }
