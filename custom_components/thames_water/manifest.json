@@ -1,18 +1,11 @@
 {
-  "domain": "thames_water",
-  "name": "Thames Water",
-  "integration_type": "hub",
-  "version": "1.0",
-  "config_flow": true,
-  "requirements": [
-  ],
-  "dependencies": [
-    "recorder"
-  ],
-  "iot_class": "cloud_polling",
-  "codeowners": [
-    "@ale770"
-  ],
-  "documentation": "https://github.com/ale770/ha-thames-water",
-  "issue_tracker": "https://github.com/ale770/ha-thames-water/issues"
+  "name": "Thames Water Client",
+  "version": "1.0.0",
+  "description": "A Python client for accessing Thames Water smart meter data",
+  "main": "thameswaterclient.py",
+  "author": "@ivmreg",
+  "license": "MIT",
+  "dependencies": {
+    "requests": "^2.31.0"
+  }
 }
