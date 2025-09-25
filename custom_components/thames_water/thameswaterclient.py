@@ -137,7 +137,7 @@ class ThamesWater:
         headers = {
             "Origin": "https://login.thameswater.co.uk",
             "Referer": f"https://login.thameswater.co.uk/identity.thameswater.co.uk/b2c_1_tw_website_signin/oauth2/v2.0/authorize?client_id={self.client_id}",
-            "x-csrf-token": csrf_token,
+            "X-Csrf-Token": csrf_token,
             "Content-Type": "application/x-www-form-urlencoded",
             "Accept": "application/json",
         }
@@ -199,7 +199,7 @@ class ThamesWater:
         data = {
             "client_id": self.client_id,
             "redirect_uri": "https://www.thameswater.co.uk/login",
-            "scope": "openid offline_access profile",
+            "scope": "openid profile offline_access",
             "grant_type": "authorization_code",
             "client_info": "1",
             "x-client-SKU": "msal.js.browser",
@@ -296,7 +296,7 @@ class ThamesWater:
         )
         state = r.url.split("&state=")[1].split("&nonce=")[0].replace("%3d", "=")
         id_token = r.text.split("id='id_token' value='")[1].split("'/>")[0]
-        self.s.get(r.url)
+        r = self.s.get(r.url)
         self._login(state, id_token)
         self.s.cookies.set(name="b2cAuthenticated", value="true")
 
