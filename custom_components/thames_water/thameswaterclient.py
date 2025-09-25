@@ -245,13 +245,13 @@ class ThamesWater:
         }
 
         self.logger.debug("HTTP GET -> %s", "https://myaccount.thameswater.co.uk/mydashboard")
-        r = self.s.get("https://myaccount.thameswater.co.uk/mydashboard")
+        r = self.s.get("https://myaccount.thameswater.co.uk/mydashboard", headers=headers)
         self.logger.debug("HTTP GET <- %s status=%s headers=%s body=%s",
                          r.url, r.status_code, dict(r.headers), r.text)
 
         dashboard_url = f"https://myaccount.thameswater.co.uk/mydashboard/my-meters-usage?contractAccountNumber={self.account_number}"
         self.logger.debug("HTTP GET -> %s", dashboard_url)
-        r = self.s.get(dashboard_url)
+        r = self.s.get(dashboard_url, headers=headers)
         self.logger.debug("HTTP GET <- %s status=%s headers=%s body=%s",
                          r.url, r.status_code, dict(r.headers), r.text)
 
@@ -263,7 +263,7 @@ class ThamesWater:
         state = r.url.split("&state=")[1].split("&nonce=")[0].replace("%3d", "=")
         id_token = r.text.split("id='id_token' value='")[1].split("'/>")[0]
         self.logger.debug("HTTP GET -> %s", r.url)
-        r = self.s.get(r.url)
+        r = self.s.get(r.url, headers=headers)
         self.logger.debug("HTTP GET <- %s status=%s headers=%s body=%s",
                          r.url, r.status_code, dict(r.headers), r.text)
         self._login(state, id_token)
