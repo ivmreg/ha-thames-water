@@ -2,11 +2,16 @@ import base64
 from dataclasses import dataclass, field
 import datetime
 import hashlib
+import logging
 import os
 from typing import Literal, Optional
 import uuid
 
 import requests
+
+# Change logger to use HA's naming convention
+# Will appear as "homeassistant.components.thames_water.client"
+logger = logging.getLogger("homeassistant.components.thames_water.client")
 
 
 @dataclass
@@ -56,8 +61,27 @@ class ThamesWater:
         self.s = requests.session()
         self.account_number = account_number
         self.client_id = client_id
-
+        self.logger = logger.getChild(self.__class__.__name__)
         self._authenticate(email, password)
+
+    def _request(self, method: str, url: str, **kwargs):
+        """Wrapper around requests to add logging"""
+        # Note: These will only appear if HA's logging is set to debug level for thames_water
+        self.logger.debug("Request %s %s", method, url)
+        self.logger.debug("Request params: %s", kwargs.get("params"))
+        self.logger.debug("Request headers: %s", kwargs.get("headers"))
+        self.logger.debug("Request data: %s", kwargs.get("data"))
+
+        r = self.s.request(method, url, **kwargs)
+
+        self.logger.debug("Response status: %d", r.status_code)
+        self.logger.debug("Response headers: %s", dict(r.headers))
+        try:
+            self.logger.debug("Response JSON: %s", r.json())
+        except:
+            self.logger.debug("Response text: %s", r.text[:1000])
+
+        return r
 
     def _generate_pkce(self):
         self.pkce_verifier = (
@@ -86,7 +110,7 @@ class ThamesWater:
             "state": str(uuid.uuid4()),
         }
 
-        r = self.s.get(url, params=params)
+        r = self._request("GET", url, params=params)
         r.raise_for_status()
         return dict(self.s.cookies)["x-ms-cpim-trans"], dict(self.s.cookies)[
             "x-ms-cpim-csrf"
@@ -109,7 +133,7 @@ class ThamesWater:
             "x-csrf-token": csrf_token,
         }
 
-        r = self.s.post(url, params=params, data=data, headers=headers)
+        r = self._request("POST", url, params=params, data=data, headers=headers)
         r.raise_for_status()
 
     def _confirmed_b2c_1_tw_website_signin(self, trans_token: str, csrf_token: str):
@@ -126,7 +150,7 @@ class ThamesWater:
             "p": "B2C_1_tw_website_signin",
         }
 
-        r = self.s.get(url, headers=headers, params=params)
+        r = self._request("GET", url, headers=headers, params=params)
         r.raise_for_status()
 
         confirmed_signup_structured_response = {
@@ -158,7 +182,7 @@ class ThamesWater:
             "code": confirmation_code,
         }
 
-        r = self.s.post(url, headers=headers, data=data)
+        r = self._request("POST", url, headers=headers, data=data)
         r.raise_for_status()
         self.oauth_request_tokens = r.json()
 
@@ -180,7 +204,7 @@ class ThamesWater:
 
         headers = {"content-type": "application/x-www-form-urlencoded;charset=utf-8"}
 
-        r = self.s.get(url, headers=headers, data=data)
+        r = self._request("GET", url, headers=headers, data=data)
         r.raise_for_status()
         self.oauth_response_tokens = r.json()
 
@@ -197,7 +221,7 @@ class ThamesWater:
             "content-type": "application/x-www-form-urlencoded",
         }
 
-        r = self.s.post(url, data=data, headers=headers)
+        r = self._request("POST", url, data=data, headers=headers)
         r.raise_for_status()
 
     def _authenticate(
@@ -221,17 +245,19 @@ class ThamesWater:
             "Referer": "https://myaccount.thameswater.co.uk/twservice/Account/SignIn?useremail=",
         }
 
-        self.s.get("https://myaccount.thameswater.co.uk/mydashboard")
-        self.s.get(
-            f"https://myaccount.thameswater.co.uk/mydashboard/my-meters-usage?contractAccountNumber={self.account_number}"
+        self._request("GET", "https://myaccount.thameswater.co.uk/mydashboard")
+        self._request(
+            "GET",
+            f"https://myaccount.thameswater.co.uk/mydashboard/my-meters-usage?contractAccountNumber={self.account_number}",
         )
-        r = self.s.get(
+        r = self._request(
+            "GET",
             "https://myaccount.thameswater.co.uk/twservice/Account/SignIn?useremail=",
             headers=headers,
         )
         state = r.url.split("&state=")[1].split("&nonce=")[0].replace("%3d", "=")
         id_token = r.text.split("id='id_token' value='")[1].split("'/>")[0]
-        self.s.get(r.url)
+        self._request("GET", r.url)
         self._login(state, id_token)
         self.s.cookies.set(name="b2cAuthenticated", value="true")
 
@@ -263,7 +289,7 @@ class ThamesWater:
             "X-Requested-With": "XMLHttpRequest",
         }
 
-        r = self.s.get(url, params=params, headers=headers)
+        r = self._request("GET", url, params=params, headers=headers)
         r.raise_for_status()
 
         data = r.json()
