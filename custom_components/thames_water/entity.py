@@ -1,27 +1,19 @@
-"""Base class for Thames Water meters and readings."""
+"""Entity for the Thames Water integration."""
 
-from abc import ABC, abstractmethod
+from homeassistant.helpers.entity import Entity
 
-class ThamesWaterDevice(ABC):
-    """Base class for Thames Water devices."""
+from .const import DOMAIN
 
-    def __init__(self, meter_id: str, account_number: str):
-        """Initialize the device."""
-        self.meter_id = meter_id
-        self.account_number = account_number
+
+class ThamesWaterEntity(Entity):
+    """Base class for TW Entity."""
 
     @property
     def device_info(self):
-        """Return device information."""
+        """Return device information for this entity."""
         return {
-            "id": self.meter_id,
+            "identifiers": {(DOMAIN, "thames_water")},
             "manufacturer": "Thames Water",
-            "model": "Smart Water Meter",
-            "name": f"Thames Water Meter {self.meter_id}",
-            "account": self.account_number
+            "model": "Thames Water",
+            "name": "Thames Water Meter",
         }
-
-    @abstractmethod
-    def update(self):
-        """Update the device state."""
-        pass
