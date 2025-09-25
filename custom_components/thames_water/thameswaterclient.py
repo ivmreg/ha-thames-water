@@ -246,11 +246,11 @@ class ThamesWater:
 
         params = {
             "meter": meter,
-            "startDate": start.day,
-            "startMonth": start.month,
+            "startDate": "{:02d}".format(start.day),
+            "startMonth": "{:02d}".format(start.month),
             "startYear": start.year,
-            "endDate": end.day,
-            "endMonth": end.month,
+            "endDate": "{:02d}".format(end.day),
+            "endMonth": "{:02d}".format(end.month),
             "endYear": end.year,
             "granularity": "H",
             "premiseId": "",
