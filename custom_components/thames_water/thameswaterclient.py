@@ -2,11 +2,15 @@ import base64
 from dataclasses import dataclass, field
 import datetime
 import hashlib
+import logging
 import os
 from typing import Literal, Optional
 import uuid
 
 import requests
+
+# Home Assistant logger namespace
+logger = logging.getLogger("homeassistant.components.thames_water")
 
 
 @dataclass
@@ -51,12 +55,12 @@ class ThamesWater:
         email: str,
         password: str,
         account_number: int,
-        client_id: str = "cedfde2d-79a7-44fd-9833-cae769640d3d",  # specific to Thames Water
+        client_id: str = "cedfde2d-79a7-44fd-9833-cae769640d3d",
     ):
         self.s = requests.session()
         self.account_number = account_number
         self.client_id = client_id
-
+        self.logger = logger.getChild(self.__class__.__name__)
         self._authenticate(email, password)
 
     def _generate_pkce(self):
@@ -86,7 +90,10 @@ class ThamesWater:
             "state": str(uuid.uuid4()),
         }
 
+        self.logger.debug("HTTP GET -> %s params=%s", url, params)
         r = self.s.get(url, params=params)
+        self.logger.debug("HTTP GET <- %s status=%s headers=%s body=%s", 
+                         url, r.status_code, dict(r.headers), r.text)
         r.raise_for_status()
         return dict(self.s.cookies)["x-ms-cpim-trans"], dict(self.s.cookies)[
             "x-ms-cpim-csrf"
@@ -109,7 +116,11 @@ class ThamesWater:
             "x-csrf-token": csrf_token,
         }
 
+        self.logger.debug("HTTP POST -> %s params=%s headers=%s data=%s", 
+                         url, params, headers, data)
         r = self.s.post(url, params=params, data=data, headers=headers)
+        self.logger.debug("HTTP POST <- %s status=%s headers=%s body=%s",
+                         url, r.status_code, dict(r.headers), r.text)
         r.raise_for_status()
 
     def _confirmed_b2c_1_tw_website_signin(self, trans_token: str, csrf_token: str):
@@ -126,7 +137,10 @@ class ThamesWater:
             "p": "B2C_1_tw_website_signin",
         }
 
+        self.logger.debug("HTTP GET -> %s params=%s headers=%s", url, params, headers)
         r = self.s.get(url, headers=headers, params=params)
+        self.logger.debug("HTTP GET <- %s status=%s headers=%s body=%s",
+                         url, r.status_code, dict(r.headers), r.text)
         r.raise_for_status()
 
         confirmed_signup_structured_response = {
@@ -158,7 +172,10 @@ class ThamesWater:
             "code": confirmation_code,
         }
 
+        self.logger.debug("HTTP POST -> %s headers=%s data=%s", url, headers, data)
         r = self.s.post(url, headers=headers, data=data)
+        self.logger.debug("HTTP POST <- %s status=%s headers=%s body=%s",
+                         url, r.status_code, dict(r.headers), r.text)
         r.raise_for_status()
         self.oauth_request_tokens = r.json()
 
@@ -180,7 +197,10 @@ class ThamesWater:
 
         headers = {"content-type": "application/x-www-form-urlencoded;charset=utf-8"}
 
+        self.logger.debug("HTTP GET -> %s headers=%s data=%s", url, headers, data)
         r = self.s.get(url, headers=headers, data=data)
+        self.logger.debug("HTTP GET <- %s status=%s headers=%s body=%s",
+                         url, r.status_code, dict(r.headers), r.text)
         r.raise_for_status()
         self.oauth_response_tokens = r.json()
 
@@ -197,7 +217,10 @@ class ThamesWater:
             "content-type": "application/x-www-form-urlencoded",
         }
 
+        self.logger.debug("HTTP POST -> %s headers=%s data=%s", url, headers, data)
         r = self.s.post(url, data=data, headers=headers)
+        self.logger.debug("HTTP POST <- %s status=%s headers=%s body=%s",
+                         url, r.status_code, dict(r.headers), r.text)
         r.raise_for_status()
 
     def _authenticate(
@@ -221,17 +244,28 @@ class ThamesWater:
             "Referer": "https://myaccount.thameswater.co.uk/twservice/Account/SignIn?useremail=",
         }
 
-        self.s.get("https://myaccount.thameswater.co.uk/mydashboard")
-        self.s.get(
-            f"https://myaccount.thameswater.co.uk/mydashboard/my-meters-usage?contractAccountNumber={self.account_number}"
-        )
-        r = self.s.get(
-            "https://myaccount.thameswater.co.uk/twservice/Account/SignIn?useremail=",
-            headers=headers,
-        )
+        self.logger.debug("HTTP GET -> %s", "https://myaccount.thameswater.co.uk/mydashboard")
+        r = self.s.get("https://myaccount.thameswater.co.uk/mydashboard")
+        self.logger.debug("HTTP GET <- %s status=%s headers=%s body=%s",
+                         r.url, r.status_code, dict(r.headers), r.text)
+
+        dashboard_url = f"https://myaccount.thameswater.co.uk/mydashboard/my-meters-usage?contractAccountNumber={self.account_number}"
+        self.logger.debug("HTTP GET -> %s", dashboard_url)
+        r = self.s.get(dashboard_url)
+        self.logger.debug("HTTP GET <- %s status=%s headers=%s body=%s",
+                         r.url, r.status_code, dict(r.headers), r.text)
+
+        signin_url = "https://myaccount.thameswater.co.uk/twservice/Account/SignIn?useremail="
+        self.logger.debug("HTTP GET -> %s headers=%s", signin_url, headers)
+        r = self.s.get(signin_url, headers=headers)
+        self.logger.debug("HTTP GET <- %s status=%s headers=%s body=%s",
+                         r.url, r.status_code, dict(r.headers), r.text)
         state = r.url.split("&state=")[1].split("&nonce=")[0].replace("%3d", "=")
         id_token = r.text.split("id='id_token' value='")[1].split("'/>")[0]
-        self.s.get(r.url)
+        self.logger.debug("HTTP GET -> %s", r.url)
+        r = self.s.get(r.url)
+        self.logger.debug("HTTP GET <- %s status=%s headers=%s body=%s",
+                         r.url, r.status_code, dict(r.headers), r.text)
         self._login(state, id_token)
         self.s.cookies.set(name="b2cAuthenticated", value="true")
 
@@ -263,7 +297,10 @@ class ThamesWater:
             "X-Requested-With": "XMLHttpRequest",
         }
 
+        self.logger.debug("HTTP GET -> %s params=%s headers=%s", url, params, headers)
         r = self.s.get(url, params=params, headers=headers)
+        self.logger.debug("HTTP GET <- %s status=%s headers=%s body=%s",
+                         url, r.status_code, dict(r.headers), r.text)
         r.raise_for_status()
 
         data = r.json()
