@@ -245,6 +245,7 @@ class ThamesWater:
         }
 
         self.logger.debug("HTTP GET -> %s", "https://myaccount.thameswater.co.uk/mydashboard")
+        self.logger.debug("HTTP GET -> %s headers=%s", "https://myaccount.thameswater.co.uk/mydashboard", headers)
         r = self.s.get("https://myaccount.thameswater.co.uk/mydashboard", headers=headers)
         self.logger.debug("HTTP GET <- %s status=%s headers=%s body=%s",
                          r.url, r.status_code, dict(r.headers), r.text)
